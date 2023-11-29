@@ -11,6 +11,7 @@ gtk_theme_directory="/usr/share/themes"
 green='\033[0;32m'
 no_color='\033[0m'
 date=$(date +%s)
+aurhelper="yay"
 
 sudo pacman --noconfirm --needed -Sy dialog
 
@@ -20,19 +21,9 @@ system_update(){
     sudo pacman --noconfirm -Syu
     sudo pacman -S --noconfirm --needed base-devel wget git curl
 }
-install_aur_helper(){ 
-    if ! command -v "$aurhelper" &> /dev/null
-    then
-    echo -e "${green}[*] It seems that you don't have $aurhelper installed, I'll install that for you before continuing.${no_color}"
-    git clone https://aur.archlinux.org/"$aurhelper".git $HOME/.srcs/"$aurhelper"
-    (cd $HOME/.srcs/"$aurhelper"/ && makepkg -si)
-    else
-    echo -e "${green}[*] It seems that you already have $aurhelper installed, skipping.${no_color}"
-    fi
-}
 install_pkgs(){
     echo -e "${green}[*] Installing packages with pacman.${no_color}"
-    sudo pacman -S --noconfirm --needed acpi alsa-utils base-devel curl git pulseaudio pulseaudio-alsa xorg xorg-xinit alacritty btop code dunst feh firefox i3-gaps libnotify light mpc mpd ncmpcpp nemo neofetch neovim pacman-contrib papirus-icon-theme picom polybar ranger rofi scrot slop xclip zathura zathura-pdf-mupdf zsh
+    sudo pacman -S --noconfirm --needed acpi alsa-utils base-devel curl git pulseaudio pulseaudio-alsa xorg xorg-xinit alacritty btop code dunst feh firefox i3-gaps libnotify light mpc mpd ncmpcpp nemo neofetch neovim pacman-contrib papirus-icon-theme picom polybar ranger rofi scrot slop xclip zathura zathura-pdf-mupdf
 }
 install_aur_pkgs(){
     echo -e "${green}[*] Installing packages with $aurhelper.${no_color}"
@@ -55,7 +46,6 @@ create_backup(){
     [ -d "$config_directory"/mpd ] && mv "$config_directory"/mpd "$config_directory"/mpd_$date && echo "mpd configs detected, backing up."
     [ -d "$config_directory"/ncmpcpp ] && mv "$config_directory"/ncmpcpp "$config_directory"/ncmpcpp_$date && echo "ncmpcpp configs detected, backing up."
     [ -d "$config_directory"/neofetch ] && mv "$config_directory"/neofetch "$config_directory"/neofetch_$date && echo "neofetch configs detected, backing up."
-    [ -d "$config_directory"/nvim ] && mv "$config_directory"/nvim "$config_directory"/nvim_$date && echo "nvim configs detected, backing up."
     [ -d "$config_directory"/picom ] && mv "$config_directory"/picom "$config_directory"/picom_$date && echo "picom configs detected, backing up."
     [ -d "$config_directory"/polybar ] && mv "$config_directory"/polybar "$config_directory"/polybar_$date && echo "polybar configs detected, backing up."
     [ -d "$config_directory"/ranger ] && mv "$config_directory"/ranger "$config_directory"/ranger_$date && echo "ranger configs detected, backing up."
@@ -82,12 +72,18 @@ copy_fonts(){
     fc-cache -fv
 }
 copy_other_configs(){
-
     echo -e "${green}[*] Copying wallpapers to "$HOME"/Pictures/wallpapers.${no_color}"
     cp -r ./wallpapers/* "$HOME"/Pictures/wallpapers
-    echo -e "${green}[*] Copying zsh configs.${no_color}"
-    sudo cp ./keyitdev.zsh-theme /usr/share/oh-my-zsh/custom/themes
+    echo -e "${green}[*] Setting zsh configs.${no_color}"
     cp ./.zshrc "$HOME"
+    
+    # using nvimdots
+    echo -e "${green}[*] Setting nvim configs.${no_color}"
+    if command -v curl >/dev/null 2>&1; then
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/ayamir/nvimdots/HEAD/scripts/install.sh)"
+    else
+        bash -c "$(wget -O- https://raw.githubusercontent.com/ayamir/nvimdots/HEAD/scripts/install.sh)"
+    fi
 }
 install_additional_pkgs(){
     echo -e "${green}[*] Installing additional packages with $aurhelper.${no_color}"
@@ -109,7 +105,7 @@ install_gtk_theme(){
     echo -e "${green}[*] Installing gtk theme.${no_color}"
     git clone --depth 1 https://github.com/Fausto-Korpsvart/Rose-Pine-GTK-Theme
     echo -e "${green}[*] Copying gtk theme to /usr/share/themes.${no_color}"
-    sudo cp -r ./Rose-Pine-GTK-Theme/themes/RosePine-Main-BL  /usr/share/themes/RosePine-Main
+    sudo cp -r ./Rose-Pine-GTK-Theme/themes/RosePine-Main-BL /usr/share/themes/RosePine-Main
     mkdir -p "$HOME"/.config/gtk-4.0
     sudo cp -r ./Rose-Pine-GTK-Theme/themes/RosePine-Main-BL/gtk-4.0/* "$HOME"/.config/gtk-4.0
 }   
@@ -119,8 +115,7 @@ install_sddm(){
     sudo systemctl enable sddm.service
     sudo git clone https://github.com/keyitdev/sddm-flower-theme.git /usr/share/sddm/themes/sddm-flower-theme
     sudo cp /usr/share/sddm/themes/sddm-flower-theme/Fonts/* /usr/share/fonts/
-    echo "[Theme]
-    Current=sddm-flower-theme" | sudo tee /etc/sddm.conf
+    echo "[Theme] Current=sddm-flower-theme" | sudo tee /etc/sddm.conf
 }
 finishing(){
     echo -e "${green}[*] Chmoding light.${no_color}"
@@ -128,18 +123,7 @@ finishing(){
     echo -e "${green}[*] Setting Zsh as default shell.${no_color}"
     chsh -s /bin/zsh
     sudo chsh -s /bin/zsh
-    echo -e "${green}[*] Updating nvim extensions.${no_color}"
-    nvim +PackerSync
 }
-
-cmd=(dialog --clear --title "Aur helper" --menu "Firstly, select the aur helper you want to install (or have already installed)." 10 50 16)
-options=(1 "yay" 2 "paru")
-choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
-
-case $choices in
-    1) aurhelper="yay";;
-    2) aurhelper="paru";;
-esac
 
 cmd=(dialog --clear --separate-output --checklist "Select (with space) what script should do.\\nChecked options are required for proper installation, do not uncheck them if you do not know what you are doing." 26 86 16)
 options=(1 "System update" on
@@ -157,7 +141,7 @@ options=(1 "System update" on
          13 "Install vsc theme" on
          14 "Install gtk theme" on
          15 "Install sddm with flower theme" off
-         16 "Make Light executable, set zsh as default shell, update nvim extensions." on)
+         16 "Make Light executable, set zsh as default shell." on)
 choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
 
 clear

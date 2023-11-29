@@ -1,0 +1,8 @@
+#!/bin/bash
+if (ls -l ~/.feh/*| grep "^-" | wc -l) > 1; then
+    while ; do
+        feh --bg-fill --no-fehbg --randomize ~/Pictures/wallpapers/*
+        sleep 360
+    done
+else
+    exec_always feh --no-fehbg --bg-scale $HOME/Pictures/wallpapers/background.jpg
